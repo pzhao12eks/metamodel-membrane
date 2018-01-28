@@ -16,44 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.metamodel.membrane.controllers.model;
+package org.apache.metamodel.membrane.app.config;
 
-import java.io.Serializable;
-import java.net.URI;
+import org.apache.metamodel.membrane.swagger.invoker.JSON;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
-/**
- * Represents a hyper-link to a service (typically provided in the REST
- * responses)
- */
-public class RestLink implements Serializable {
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-    private static final long serialVersionUID = 1L;
+@Configuration
+public class JacksonConfig {
 
-    private String name;
-    private URI uri;
-
-    public RestLink() {
-    }
-
-    public RestLink(final String name, final URI uri) {
-        this();
-        this.name = name;
-        this.uri = uri;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(final String name) {
-        this.name = name;
-    }
-
-    public URI getUri() {
-        return uri;
-    }
-
-    public void setUri(final URI uri) {
-        this.uri = uri;
+    @Bean(name = "objectMapper")
+    public ObjectMapper objectMapper() {
+        // use the JSON class from swagger-codegen
+        final JSON json = new JSON();
+        return json.getContext(Object.class);
     }
 }
