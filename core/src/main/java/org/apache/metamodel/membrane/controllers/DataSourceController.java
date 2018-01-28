@@ -35,6 +35,7 @@ import org.apache.metamodel.membrane.app.TenantContext;
 import org.apache.metamodel.membrane.app.TenantRegistry;
 import org.apache.metamodel.membrane.app.exceptions.InvalidDataSourceException;
 import org.apache.metamodel.membrane.controllers.model.RestDataSourceDefinition;
+import org.apache.metamodel.membrane.swagger.model.DeleteDatasourceResponse;
 import org.apache.metamodel.membrane.swagger.model.GetDatasourceResponse;
 import org.apache.metamodel.membrane.swagger.model.GetDatasourceResponseSchemas;
 import org.slf4j.Logger;
@@ -87,9 +88,11 @@ public class DataSourceController {
             }
         }
 
-        final String dataContextIdentifier = dataSourceRegistry.registerDataSource(dataSourceId, properties);
+        final String dataSourceIdentifier = dataSourceRegistry.registerDataSource(dataSourceId, properties);
 
-        return get(tenantId, dataContextIdentifier);
+        logger.info("Created data source: {}/{}", tenantId, dataSourceIdentifier);
+
+        return get(tenantId, dataSourceIdentifier);
     }
 
     @RequestMapping(method = RequestMethod.GET)
@@ -126,5 +129,18 @@ public class DataSourceController {
                 UriBuilder.fromPath("/{tenant}/{dataContext}/query").build(tenantName, dataSourceName).toString());
         resp.schemas(schemaLinks);
         return resp;
+    }
+
+    @RequestMapping(method = RequestMethod.DELETE)
+    @ResponseBody
+    public DeleteDatasourceResponse delete(@PathVariable("tenant") String tenantId,
+            @PathVariable("datasource") String dataSourceName) {
+        final TenantContext tenantContext = tenantRegistry.getTenantContext(tenantId);
+        final DataSourceRegistry dataSourceRegistry = tenantContext.getDataSourceRegistry();
+        dataSourceRegistry.removeDataSource(dataSourceName);
+
+        logger.info("Deleted data source: {}/{}", tenantId, dataSourceName);
+
+        return new DeleteDatasourceResponse().deleted(true).type("datasource").name(dataSourceName);
     }
 }

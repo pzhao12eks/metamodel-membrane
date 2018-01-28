@@ -44,6 +44,8 @@ public interface DataSourceRegistry {
     public String registerDataSource(String dataSourceName, DataContextProperties dataContextProperties)
             throws DataSourceAlreadyExistException;
 
+    public void removeDataSource(String dataSourceName) throws NoSuchDataSourceException;
+    
     /**
      * Opens a {@link DataContext} that exists in the registry.
      * 
@@ -77,5 +79,4 @@ public interface DataSourceRegistry {
         }
         throw new DataSourceNotUpdateableException(dataSourceName);
     }
-
 }
