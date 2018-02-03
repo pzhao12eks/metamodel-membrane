@@ -1,3 +1,5 @@
+after_success:
+- mvn test javadoc:javadoc
 before_cache:
 - rm -rf $HOME/CACHE; find $TRAVIS_BUILD_DIR -name .starts | while read line; do du
   -sh $line;         DIR=$(dirname $HOME/CACHE$line); mkdir -p $DIR; cp -r $line $DIR;
@@ -11,9 +13,6 @@ before_install:
   done
 - find $HOME/CACHE -name .starts | while read line; do du -sh $line;         DIR=$(dirname
   ${line#$HOME/CACHE}); if [[ -d ${DIR#.starts/} ]]; then cp -r $line $DIR; fi; done
-- sudo apt-get -qq update
-- sudo apt-get install npm
-- sudo npm install newman --global;
 before_script:
 - find $TRAVIS_BUILD_DIR -name .starts | while read line; do rm -rf $line; done
 - find $TRAVIS_BUILD_DIR -name jdeps-cache | while read line; do rm -rf $line; done
@@ -29,14 +28,10 @@ jdk:
 - oraclejdk8
 language: java
 script:
-- touch NOW
+- touch /tmp/NOW
 - echo GIBSTUDYSTART $(date)
-- mvn clean install -Pfull
+- mvn test -B
 - echo GIBSTUDYEND $(date)
 - cd $TRAVIS_BUILD_DIR
-- if [ "$TRAVIS_OS_NAME" == "osx" ];        then echo TESTNUM $(find . -name TEST-*.xml
-  -newer NOW | wc -l);        else echo TESTNUM $(find -name TEST-*.xml -newer NOW
-  | wc -l);        fi
-services:
-- docker
+- echo TESTNUM $(find . -name TEST-*.xml -newer /tmp/NOW | wc -l)
 sudo: false
