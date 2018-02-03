@@ -19,22 +19,16 @@
 package org.apache.metamodel.membrane.controllers;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 
 import java.util.Map;
 
 import org.apache.metamodel.membrane.app.InMemoryTenantRegistry;
 import org.apache.metamodel.membrane.app.TenantRegistry;
-import org.apache.metamodel.membrane.controllers.ColumnController;
-import org.apache.metamodel.membrane.controllers.DataSourceController;
-import org.apache.metamodel.membrane.controllers.QueryController;
-import org.apache.metamodel.membrane.controllers.SchemaController;
-import org.apache.metamodel.membrane.controllers.TableController;
-import org.apache.metamodel.membrane.controllers.TableDataController;
-import org.apache.metamodel.membrane.controllers.TenantController;
+import org.apache.metamodel.membrane.app.config.JacksonConfig;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -49,17 +43,21 @@ public class TenantInteractionScenarioTest {
 
     @Before
     public void init() {
-        TenantRegistry tenantRegistry = new InMemoryTenantRegistry();
-        TenantController tenantController = new TenantController(tenantRegistry);
-        DataSourceController dataContextController = new DataSourceController(tenantRegistry);
-        SchemaController schemaController = new SchemaController(tenantRegistry);
-        TableController tableController = new TableController(tenantRegistry);
-        ColumnController columnController = new ColumnController(tenantRegistry);
-        QueryController queryController = new QueryController(tenantRegistry);
-        TableDataController tableDataController = new TableDataController(tenantRegistry);
+        final MappingJackson2HttpMessageConverter messageConverter = new MappingJackson2HttpMessageConverter();
+        messageConverter.setObjectMapper(new JacksonConfig().objectMapper());
+
+        final TenantRegistry tenantRegistry = new InMemoryTenantRegistry();
+        final TenantController tenantController = new TenantController(tenantRegistry);
+        final DataSourceController dataContextController = new DataSourceController(tenantRegistry);
+        final SchemaController schemaController = new SchemaController(tenantRegistry);
+        final TableController tableController = new TableController(tenantRegistry);
+        final ColumnController columnController = new ColumnController(tenantRegistry);
+        final QueryController queryController = new QueryController(tenantRegistry);
+        final TableDataController tableDataController = new TableDataController(tenantRegistry);
 
         mockMvc = MockMvcBuilders.standaloneSetup(tenantController, dataContextController, schemaController,
-                tableController, columnController, queryController, tableDataController).build();
+                tableController, columnController, queryController, tableDataController).setMessageConverters(
+                        messageConverter).build();
     }
 
     @Test
@@ -73,7 +71,7 @@ public class TenantInteractionScenarioTest {
             final Map<?, ?> map = new ObjectMapper().readValue(content, Map.class);
             assertEquals("tenant", map.get("type"));
             assertEquals("tenant1", map.get("name"));
-            assertNull(map.get("datasources"));
+            assertEquals("[]", map.get("datasources").toString());
         }
 
         // create datasource
@@ -143,9 +141,8 @@ public class TenantInteractionScenarioTest {
             assertEquals("column", map.get("type"));
             assertEquals("bar", map.get("name"));
 
-            assertEquals(
-                    "{number=0, size=null, nullable=true, primary-key=false, indexed=false, column-type=INTEGER, native-type=null, remarks=null}",
-                    map.get("metadata").toString());
+            assertEquals("{number=0, nullable=true, primary-key=false, indexed=false, column-type=INTEGER}", map.get(
+                    "metadata").toString());
         }
 
         // query metadata from information_schema
@@ -157,7 +154,7 @@ public class TenantInteractionScenarioTest {
             final String content = result.getResponse().getContentAsString();
             final Map<?, ?> map = new ObjectMapper().readValue(content, Map.class);
             assertEquals("dataset", map.get("type"));
-            assertEquals("[columns.name, columns.table]", map.get("header").toString());
+            assertEquals("[columns.name, columns.table]", map.get("headers").toString());
             assertEquals("[[bar, foo], [baz, foo], [greeting, hello_world], [who, hello_world]]", map.get("data")
                     .toString());
         }
@@ -175,15 +172,15 @@ public class TenantInteractionScenarioTest {
         }
         {
             final MvcResult result = mockMvc.perform(MockMvcRequestBuilders.post(
-                    "/tenant1/mydata/s/mydata/t/hello_world/d").content("[{'greeting':'Hi','who':'Apache'}]"
-                            .replace('\'', '"')).contentType(MediaType.APPLICATION_JSON)).andExpect(
-                                    MockMvcResultMatchers.status().isOk()).andReturn();
+                    "/tenant1/mydata/s/mydata/t/hello_world/d").content("[{'greeting':'Hi','who':'Apache'}]".replace(
+                            '\'', '"')).contentType(MediaType.APPLICATION_JSON)).andExpect(MockMvcResultMatchers
+                                    .status().isOk()).andReturn();
 
             final String content = result.getResponse().getContentAsString();
             final Map<?, ?> map = new ObjectMapper().readValue(content, Map.class);
             assertEquals("{status=ok}", map.toString());
         }
-        
+
         // query the actual data
         // query metadata from information_schema
         {
@@ -194,9 +191,8 @@ public class TenantInteractionScenarioTest {
             final String content = result.getResponse().getContentAsString();
             final Map<?, ?> map = new ObjectMapper().readValue(content, Map.class);
             assertEquals("dataset", map.get("type"));
-            assertEquals("[hello_world.greeting, hello_world.who AS who_is_it]", map.get("header").toString());
-            assertEquals("[[Howdy, MetaModel], [Hi, Apache]]", map.get("data")
-                    .toString());
+            assertEquals("[hello_world.greeting, hello_world.who AS who_is_it]", map.get("headers").toString());
+            assertEquals("[[Howdy, MetaModel], [Hi, Apache]]", map.get("data").toString());
         }
     }
 }
